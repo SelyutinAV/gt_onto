@@ -59,7 +59,8 @@ Sub Main
 
 '----------- делаем проход по всем топикам карты
 
-	For Each curTopic In ActiveDocument.Range(mmRangeAllTopics)
+'	For Each curTopic In ActiveDocument.Range(mmRangeAllTopics)
+		Set curTopic = ActiveDocument.Selection.PrimaryTopic
 
 '-------- У выбранного топика берем его иерархию и заполняем массив txt для диалогового окна - массив его иерархии
 		Set lvl = curTopic.Level
@@ -146,7 +147,7 @@ Debug.Print "TOT="&tot
 '   			Next i
 '		End If
 
-	Next
+'	Next
 
 
 End Sub
