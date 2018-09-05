@@ -1,0 +1,92 @@
+
+Sub Main
+	Debug.Clear
+
+	Dim t As Topic
+	Dim tt As Topics
+
+
+
+
+' право - 37, верх - 36, низ - 66, лево - 65, во - 46
+
+Debug.Print ActiveDocument.Selection.PrimaryTopic.Guid
+
+	Dim arrGuid() As String
+
+Erase arrGuid
+ReDim arrGuid(ActiveDocument.Range(mmRangeAllTopics).Count)
+
+
+	For Each t In ActiveDocument.Range(mmRangeAllTopics)
+		If t.Text = ActiveDocument.Selection.PrimaryTopic.Text Then
+			tot=tot+1
+			arrGuid(tot) = t.Guid
+		End If
+	Next
+	    For i = 1 To tot
+	    	Debug.Print ActiveDocument.Range(mmRangeAllTopics).FindByGuid(Trim(arrGuid(i))).IsValid
+	    Next i
+
+Debug.Print "!!!"&tot
+
+	Set gID = ActiveDocument.MapMarkerGroups.Item(12).GroupId
+
+    Set cMMG = ActiveDocument.Selection.PrimaryTopic.TextLabels.Count
+	For i=1 To cMMG
+		If gID = ActiveDocument.Selection.PrimaryTopic.TextLabels.Item(i).GroupId Then
+			Debug.Print ActiveDocument.Selection.PrimaryTopic.TextLabels.Item(i).Name
+		Else
+			Debug.Print "!!!!!"
+		End If
+	Next
+
+    Dim m_Icon As Icon
+    For Each m_Icon In ActiveDocument.Selection.PrimaryTopic.Icons
+        Debug.Print m_Icon.Name
+		Debug.Print m_Icon.StockIcon
+		Debug.Print m_Icon.IsValid
+				Debug.Print m_Icon.Type
+
+
+		Debug.Print "-----------"
+    Next
+
+
+
+End Sub
+
+Function DialogFunc(DlgItem$, Action%, SuppValue?) As Boolean
+
+	    Begin Dialog UserDialog 200,120
+	        Text 10,10,180,15,"Please push the OK button"
+	        TextBox 10,40,180,15,.Text
+	        OKButton 30,90,60,20
+	        PushButton 110,90,60,20,"&Hello"
+	    End Dialog
+	    Dim dlg As UserDialog
+	    Debug.Print Dialog(dlg)
+
+
+    Debug.Print "Action="; Action%
+    If Action% <> 1 And Action% <> 5 Then
+        Debug.Print DlgItem$'; "="""; DlgText(DlgItem$); """"
+    End If
+    Debug.Print "SuppValue="; SuppValue?
+    Select Case Action%
+    Case 1 ' Dialog box initialization
+        Beep
+    Case 2 ' Value changing or button pressed
+        If DlgItem$ = "Hello" Then
+            MsgBox "Hello"
+            DialogFunc = True 'do not exit the dialog
+        End If
+    Case 4 ' Focus changed
+        Debug.Print "DlgFocus="""; DlgFocus(); """"
+    Case 6 ' Function key
+        If SuppValue? And &H100 Then Debug.Print "Shift-";
+        If SuppValue? And &H200 Then Debug.Print "Ctrl-";
+        If SuppValue? And &H400 Then Debug.Print "Alt-";
+        Debug.Print "F" & (SuppValue And &HFF)
+    End Select
+End Function

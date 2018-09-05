@@ -1,0 +1,185 @@
+Sub Main
+
+	Set hText = 14
+
+	Dim curTopic, tRepl As Topic
+
+	Dim combos()
+	Dim lists()
+	Dim txt(6) As String
+	Dim selects() As Integer
+	Dim m_Tag As TextLabel
+
+	Dim arrGuid() As String
+
+	Dim tagGroupName, tName As String
+
+	Debug.Clear
+
+'------ Находим все группы тегов в документе и предлагаем выбрать группу для заполнения
+	Set cMMG = ActiveDocument.MapMarkerGroups.Count
+	ReDim combos(cMMG)
+	For i=1 To cMMG
+		combos(i) = ActiveDocument.MapMarkerGroups.Item(i).Name
+    Next i
+    Begin Dialog UserDialog 400,60+hText*cMMG
+        Text 10,10,380,15,"Выбирите маркер для проставления"
+        ComboBox 10,25,380,hText*cMMG,combos(),.combo
+        OKButton 80,30+hText*cMMG,40,20
+    End Dialog
+    Dim dlg1 As UserDialog
+	'dlg1.combo = "Подсистемы"
+    Dialog dlg1 ' show dialog (wait for ok)
+    Debug.Print dlg1.combo
+
+    tagGroupName = dlg1.combo
+
+'------ Находим выбранную группу тегов
+	For i=1 To cMMG
+		If dlg1.combo = ActiveDocument.MapMarkerGroups.Item(i).Name Then
+			posMG = i
+			Set gID =ActiveDocument.MapMarkerGroups.Item(i).GroupId
+		End If
+    Next i
+
+'------- Заполняем список тегов из выбранной группы
+    Set cSMMG = ActiveDocument.MapMarkerGroups.Item(posMG).Count
+	If cSMMG > 0 Then
+		ReDim lists(cSMMG)
+		For i=1 To cSMMG
+			lists(i) = ActiveDocument.MapMarkerGroups.Item(posMG).Item(i).Label
+	    Next
+	Else
+	    Debug.Print "Нет объектов"
+	End If
+
+	ReDim selects(cSMMG) ' Делаем размер массива для выбранных уже тегов равный размеру самого списка тегов
+
+'	curTopic = ActiveDocument.Selection.PrimaryTopic.Guid
+
+'----------- делаем проход по всем топикам карты
+
+	For Each curTopic In ActiveDocument.Range(mmRangeAllTopics)
+
+'-------- У выбранного топика берем его иерархию и заполняем массив txt для диалогового окна - массив его иерархии
+		Set lvl = curTopic.Level
+
+	    For i = LBound(txt) To UBound(txt)
+	        txt(i) = ""
+	    Next i
+
+		Call SetTxt(lvl, curTopic, txt)
+
+'-------- Считаем, сколько таких топиков
+
+		Erase arrGuid
+		ReDim arrGuid(ActiveDocument.Range(mmRangeAllTopics).Count)
+
+		For Each t In ActiveDocument.Range(mmRangeAllTopics)
+			If t.Text = curTopic.Text Then
+				tot=tot+1
+				arrGuid(tot) = t.Guid
+			End If
+		Next
+
+'-------- У выбранного топика берем его теги и заполняем массив для отметки уже выбранных тегов
+		For i=1 To cSMMG
+			If curTopic.TextLabels.ContainsTextLabel(lists(i)) Then
+				selects(i) = i
+			Else
+				selects(i) = 0
+			End If
+	    Next
+
+'------- Выводим диалог
+
+
+	Begin Dialog UserDialog 1400,700 ',.DialogFunc %GRID:10,7,1,1
+		Text 10,10,130,15,"Нацпрограмма:",.Lablel1
+		Text 150,10,540,15,txt(1)
+		Text 10,30,130,15,"Направление",.Lablel2
+		Text 150,30,540,65,txt(2)
+		Text 10,100,130,15,"Задача",.Lablel3
+		Text 150,100,540,85,txt(3)
+		Text 10,190,130,15,"Мероприятие",.Lablel4
+		Text 150,190,540,65,txt(4)
+		Text 10,260,130,15,"Показатель",.Lablel5
+		Text 150,260,540,65,txt(5)
+
+		Text 10,330,450,15,"Надено "&tot&" одноименных топиков"
+
+		MultiListBox 710,7,680,637,lists(),.list
+		OKButton 680,665,40,21
+		PushButton 550,665,100,21,"&Copy From"
+	End Dialog
+
+	    Dim dlg As UserDialog
+	    dlg.list = selects
+	    Dialog dlg ' show dialog (wait for ok)
+
+'--------- Чистим тэги выбранной группы
+		ClearTagByGroupId(curTopic,gid)
+
+'--------- Заполняем тэги
+	    For i = LBound(dlg.list) To UBound(dlg.list)
+	    	tName = Trim(lists(dlg.list(i)))
+	        curTopic.TextLabels.AddTextLabel(tName)
+	    Next i
+
+'--------- Делаем тоже для всех таких нод
+Debug.Print "TOT="&tot
+'		If tot > 1 Then
+'			For i = 1 To tot
+'	    		Debug.Print arrGuid(i)
+
+'				For Each tRepl In ActiveDocument.Range(mmRangeAllTopics).FindByGuid(Trim(arrGuid(i)))
+'					tRepl.IsValid
+
+'				Next
+
+'					ClearTagByGroupId(tRepl,gid)
+'					For j = LBound(dlg.list) To UBound(dlg.list)
+'		    			tName = Trim(lists(dlg.list(j)))
+'		        		tRepl.TextLabels.AddTextLabel(tName)
+'		    		Next j
+'		    	Next
+'   			Next i
+'		End If
+
+	Next
+
+
+End Sub
+
+Public Sub SetTxt(level As Integer, curTopic As Topic, ByRef txt() As String )
+	If level > 1 Then
+		Debug.Print curTopic.Text
+		SetTxt(level-1, curTopic.ParentTopic, txt)
+	End If
+	txt(level)= curTopic.Text
+End Sub
+
+Public Sub ClearTagByGroupId(t As Topic, gid As Variant)
+    Set cMMG = t.TextLabels.Count
+	For i=1 To cMMG
+		If gid = t.TextLabels.Item(1).GroupId Then 'Всегда удаляем первый
+			t.TextLabels.Item(1).Delete
+		End If
+	Next
+End Sub
+
+Function DialogFunc(DlgItem$, Action%, SuppValue&) As Boolean
+    Debug.Print "Action="; Action
+    Select Case Action
+    Case 1 ' Dialog box initialization
+        Beep
+    Case 2 ' Value changing or button pressed
+        If DlgItem = "CopyFrom" Then
+            DialogFunc = True 'do not exit the dialog
+        End If
+    Case 4 ' Focus changed
+        Debug.Print "DlgFocus="""; DlgFocus(); """"
+        Debug.Print "DlgControlId("; DlgItem; ")=";
+        Debug.Print DlgControlId(DlgItem)
+    End Select
+End Function

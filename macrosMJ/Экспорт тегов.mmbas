@@ -1,0 +1,120 @@
+Sub Main
+
+	Set hText = 14
+	Set lExport = 7
+	Set hString = "Подпрограмма;Направление;Задача;Основеое мероприятие;Инструмент;Работа;Сумма;Тип затрат"
+
+	Debug.Clear
+	Dim curTopic, tRepl As Topic
+
+	Dim combos()
+	Dim txt() As String
+	Dim lists() As String
+
+	Dim tLab As TextLabel
+
+
+	Dim arrGuid() As String
+
+	Dim tagGroupName, tName As String
+
+	Dim f As String		 'filename of destination text file
+
+
+	Debug.Clear
+
+	Set doc=ActiveDocument
+
+  	level=0
+  	f=GetPath(mmDirectoryMyMaps)&"wiki.csv" 'write output to wiki.txt in default directory
+	Open f For Output As #1
+
+  	Print  #1, hString 'use centraltopic as title
+
+'------ Находим все группы тегов в документе и предлагаем выбрать группу для заполнения
+	Set cMMG = ActiveDocument.MapMarkerGroups.Count
+	ReDim combos(cMMG)
+	For i=1 To cMMG
+		combos(i) = ActiveDocument.MapMarkerGroups.Item(i).Name
+    Next i
+    Begin Dialog UserDialog 400,60+hText*cMMG
+        Text 10,10,380,15,"Выбирите теги для экспорта"
+        ComboBox 10,25,380,hText*cMMG,combos(),.combo
+        OKButton 80,30+hText*cMMG,40,20
+    End Dialog
+    Dim dlg1 As UserDialog
+	'dlg1.combo = "Подсистемы"
+    Dialog dlg1 ' show dialog (wait for ok)
+    Debug.Print dlg1.combo
+
+    tagGroupName = dlg1.combo
+
+'------ Находим выбранную группу тегов
+	For i=1 To cMMG
+		If dlg1.combo = ActiveDocument.MapMarkerGroups.Item(i).Name Then
+			posMG = i
+			Set gID =ActiveDocument.MapMarkerGroups.Item(i).GroupId
+		End If
+    Next i
+
+    Set cSMMG = ActiveDocument.MapMarkerGroups.Item(posMG).Count
+	If cSMMG > 0 Then
+		ReDim lists(cSMMG)
+		For i=1 To cSMMG
+			lists(i) = ActiveDocument.MapMarkerGroups.Item(posMG).Item(i).Label
+	    Next
+	Else
+	    Debug.Print "Нет объектов"
+	End If
+
+
+	For Each curTopic In ActiveDocument.Range(mmRangeAllTopics)
+
+'-------- У выбранного топика берем его иерархию и заполняем массив txt для диалогового окна - массив его иерархии
+		Set lvl = curTopic.Level
+
+		If lvl = lExport Then
+			Debug.Print lvl
+
+			Erase txt()
+			ReDim txt(lvl)
+
+			Call SetTxt(lvl, curTopic, txt)
+
+			Str = ""
+			For i=1 To lExport
+				If i>lvl Then
+					Str = Str+";"
+				Else
+					Str = Str+txt(i)&";"
+				End If
+			Next
+
+			cTag = False
+'			Print  #1, Str
+
+	'-------- У выбранного топика (стоимости) берем его родителя и его теги и заполняем массив для отметки уже выбранных тегов
+			For Each tLab In curTopic.ParentTopic.TextLabels
+				If inArr(lists, tLab.Name) Then
+
+					Print  #1, Str&tLab.Name
+				End If
+		    Next
+		End If
+	Next
+
+	Close #1
+  	Shell("notepad.exe "&f,1)';} 'display result in notepad for pasting into wiki
+
+End Sub
+Public Sub SetTxt(level As Integer, curTopic As Topic, ByRef txt() As String )
+	If level > 1 Then
+		Debug.Print curTopic.Text
+		SetTxt(level-1, curTopic.ParentTopic, txt)
+	End If
+	txt(level)= curTopic.Text
+End Sub
+Function inArr( sArray() As String, sFind As String) As Boolean
+    s = Join(sArray, "|")
+    inArr = InStr(1, s, sFind)
+End Function
